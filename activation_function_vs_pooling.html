@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Which Activation Works With Which Pooling? — Advanced Guide</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+    pre{background:#0b1220;color:#e6edf3;padding:1rem;border-radius:8px;overflow:auto}
+    .card{box-shadow:0 10px 30px rgba(2,6,23,.06)}
+    table{border-collapse:collapse;width:100%}
+    td,th{border:1px solid #e6e9ee;padding:.5rem;text-align:left}
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+  <header class="py-12 bg-gradient-to-r from-indigo-50 to-cyan-50">
+    <div class="max-w-6xl mx-auto px-6">
+      <h1 class="text-3xl md:text-4xl font-extrabold">Which Activation Function Works With Which Pooling? — An Advanced Practical Guide</h1>
+      <p class="mt-4 text-gray-600 max-w-3xl">A concise but deep exploration of how activation functions interact with pooling layers in modern convolutional and vision networks — theory, practical rules, code snippets, and an experimental plan you can run to verify results.</p>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-6 -mt-8 pb-16">
+
+    <section class="bg-white p-6 rounded-2xl card mt-6">
+      <h2 class="text-2xl font-semibold">Summary (TL;DR)</h2>
+      <ul class="mt-3 list-disc list-inside text-gray-600">
+        <li><strong>ReLU / LeakyReLU / GELU + Max Pool:</strong> Most commonly used — preserves strong activations and is robust for sparse features.</li>
+        <li><strong>ReLU + Avg Pool / GlobalAvg:</strong> Works well for classification heads where spatial averaging is desired — encourages distributed activation patterns.</li>
+        <li><strong>SELU + Pooling:</strong> SELU pairs better with average-like pooling and layer normalization pipelines (self-normalizing networks); avoid aggressive maxing which can break self-normalization.</li>
+        <li><strong>Tanh / Sigmoid + Pooling:</strong> Use cautiously — bounded activations with avg pooling can wash out signal; prefer shallow nets or careful initialization.</li>
+        <li><strong>Swish / Mish + Pooling:</strong> Smooth activations often improve accuracy with either pooling type, but are costlier; pair with proper regularization.</li>
+        <li><strong>Stochastic / LP Pooling:</strong> Helpful with high-capacity activations (swish/GELU) to reduce overfitting; LP offers tunable behavior between max and avg.</li>
+      </ul>
+    </section>
+
+    <section class="bg-white p-6 rounded-2xl card mt-6">
+      <h2 class="text-2xl font-semibold">Quick conceptual intuition</h2>
+      <p class="mt-3 text-gray-600">Pooling reduces spatial dimensions and aggregates local features. Activations shape the distribution of those features — whether they are sparse (ReLU-style) or dense and smooth (sigmoid/tanh/swish) — the pooling operator interacts differently with each distribution:</p>
+      <ul class="mt-3 list-disc list-inside text-gray-600">
+        <li><strong>Max Pooling:</strong> Selects the strongest local response — benefits sparse activations (ReLU) where peaks encode presence.</li>
+        <li><strong>Average Pooling:</strong> Aggregates distributed evidence — benefits smoother/dense activations or when a global context is needed.</li>
+        <li><strong>LP Pooling:</strong> Tunable: p→∞ behaves like max, p=1 is average; useful for matching activation statistics.</li>
+        <li><strong>Stochastic Pooling:</strong> Samples activations proportional to value — helps regularize high-capacity activations.</li>
+      </ul>
+    </section>
+
+    <section class="bg-white p-6 rounded-2xl card mt-6">
+      <h2 class="text-2xl font-semibold">Activation functions: properties that matter</h2>
+      <ul class="mt-3 list-disc list-inside text-gray-600">
+        <li><strong>ReLU / LeakyReLU:</strong> Sparse output, unbounded positive side, dead neuron risk.</li>
+        <li><strong>GELU / Swish / Mish:</strong> Smooth, non-monotonic-ish, better gradient flow; slightly denser activations.</li>
+        <li><strong>SELU:</strong> Self-normalizing when paired with specific initialization and no dropout; sensitive to non-linear spatial reductions.</li>
+        <li><strong>Tanh / Sigmoid:</strong> Bounded, risk of saturation; gradients vanish for large magnitudes.</li>
+        <li><strong>Softplus:</strong> Smooth ReLU-like alternative; denser than ReLU but preserves nonlinearity.</li>
+      </ul>
+    </section>
+
+    <section class="bg-white p-6 rounded-2xl card mt-6">
+      <h2 class="text-2xl font-semibold">Practical compatibility table</h2>
+      <table class="mt-4">
+        <thead>
+          <tr><th>Activation</th><th>Max Pool</th><th>Avg Pool / GlobalAvg</th><th>LP / Stochastic</th><th>Notes / Best practice</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>ReLU</td><td>Excellent</td><td>Good</td><td>Good</td><td>Default pairing; max keeps sparse spikes, avg smooths representation.</td></tr>
+          <tr><td>LeakyReLU</td><td>Excellent</td><td>Good</td><td>Good</td><td>Helps avoid dead neurons; useful when activations below zero carry info.</td></tr>
+          <tr><td>GELU / Swish / Mish</td><td>Very Good</td><td>Very Good</td><td>Very Good</td><td>Smooth activations pair well with all pooling but increase compute; try LP pooling for regularization.</td></tr>
+          <tr><td>SELU</td><td>OK</td><td>Prefer</td><td>OK</td><td>Prefer average-like pooling and avoid dropout; keep self-normalizing assumptions intact.</td></tr>
+          <tr><td>Tanh / Sigmoid</td><td>Fair</td><td>Fair to Poor</td><td>Fair</td><td>Use in small networks or where bounded outputs are needed (e.g., attention logits pre-softmax).</td></tr>
+          <tr><td>Softplus</td><td>Good</td><td>Good</td><td>Good</td><td>Smoother ReLU alternative; trades performance for stability.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="bg-white p-6 rounded-2xl card mt-6">
+      <h2 class="text-2xl font-semibold">Empirical experiment plan (reproducible)</h2>
+      <p class="mt-3 text-gray-600">Run controlled experiments on CIFAR-10 / ImageNet (small subset) comparing combinations. Key metrics: validation accuracy, convergence speed, activation sparsity, gradient norms, and calibration.</p>
+      <ol class="mt-3 list-decimal list-inside text-gray-600">
+        <li>Model: a ResNet-18 variant where you can swap activation after each residual block and change pooling layers at downsampling stages.</li>
+        <li>Combos: ReLU / GELU / Swish / SELU × MaxPool / AvgPool / LP (p=2) / Stochastic.</li>
+        <li>Measurements: final accuracy, epochs-to-90%-of-best, mean activation sparsity (fraction < 1e-3), gradient L2 norm.</li>
+        <li>Repeat: 3 seeds per combo, log results to CSV. Use mixed precision for speed where possible.</li>
+      </ol>
+      <h4 class="mt-4 font-semibold">PyTorch starter code (swap-able modular block)</h4>
+      <pre><code>import torch
+import torch.nn as nn
+
+class ConvBlock(nn.Module):
+    def __init__(self, in_c, out_c, activation='relu', pool='max'):
+        super().__init__()
+        self.conv = nn.Conv2d(in_c, out_c, 3, padding=1, bias=False)
+        self.bn = nn.BatchNorm2d(out_c)
+        self.act = self._get_activation(activation)
+        self.pool = self._get_pool(pool)
+    def _get_activation(self, name):
+        return {
+            'relu': nn.ReLU(inplace=True),
+            'leaky': nn.LeakyReLU(0.1, inplace=True),
+            'gelu': nn.GELU(),
+            'swish': nn.SiLU(),
+            'selu': nn.SELU(),
+            'tanh': nn.Tanh()
+        }[name]
+    def _get_pool(self, name):
+        return {
+            'max': nn.MaxPool2d(2),
+            'avg': nn.AvgPool2d(2),
+            'lp': None,  # implement lp pooling as custom op
+            'none': nn.Identity()
+        }[name]
+    def forward(self, x):
+        x = self.conv(x)
+        x = self.bn(x)
+        x = self.act(x)
+        if self.pool is not None:
+            x = self.pool(x)
+        return x
+</code></pre>
+      <p class="mt-3 text-gray-600">(Include LP pooling implementation or use stochastic pooling from research repos.)</p>
+    </section>
+
+    <section class="bg-white p-6 rounded-2xl card mt-6">
+      <h2 class="text-2xl font-semibold">Observability & diagnostics</h2>
+      <p class="mt-3 text-gray-600">What to log during your experiments:</p>
+      <ul class="mt-3 list-disc list-inside text-gray-600">
+        <li>Activation histograms per layer (track sparsity and shift).</li>
+        <li>Gradient norms per layer (detect vanishing/exploding).</li>
+        <li>Per-class accuracy and calibration (pooling choices affect localization vs global context).</li>
+        <li>Memory & compute per step — smooth activations increase compute.</li>
+      </ul>
+    </section>
+
+    <section class="bg-white p-6 rounded-2xl card mt-6">
+      <h2 class="text-2xl font-semibold">Recommendations & rules of thumb</h2>
+      <ol class="mt-3 list-decimal list-inside text-gray-600">
+        <li>Start with <strong>ReLU + MaxPool</strong> — the simplest, fastest baseline.</li>
+        <li>If you need smoother gradients or better calibration, try <strong>GELU/Swish</strong> with AvgPool or LP pooling.</li>
+        <li>For small networks or self-normalizing designs, prefer <strong>SELU + AvgPool</strong> and avoid dropout.</li>
+        <li>If activations saturate with tanh/sigmoid, switch to batchnorm/weight normalization and consider avg pooling.</li>
+        <li>Use stochastic or LP pooling as a regularizer when overfitting is observed with complex activations.</li>
+      </ol>
+    </section>
+
+    <section class="bg-white p-6 rounded-2xl card mt-6" id="references">
+      <h2 class="text-2xl font-semibold">References & further reading</h2>
+      <ul class="mt-3 list-disc list-inside text-gray-600">
+        <li>He, K., Zhang, X., Ren, S., & Sun, J. (2016). Deep Residual Learning for Image Recognition.</li>
+        <li>Hinton et al. Original papers on pooling and attention mechanisms.</li>
+        <li>Clevert, Unterthiner & Hochreiter (2015). ELU: Exponential Linear Units.</li>
+        <li>Hendrycks & Gimpel. GELU description and usage in transformers.</li>
+      </ul>
+      <p class="mt-3 text-sm text-gray-400">Want full DOI links and arXiv URLs added into this section? I can fetch and embed them.</p>
+    </section>
+
+    <section class="mt-6 text-sm text-gray-500">
+      <p>Need this converted into a multi-page tutorial, a Jupyter notebook with runnable experiments, or a React-based docs site? Tell me which and I’ll generate it (I can also run small experiments and include plots if you want).</p>
+    </section>
+
+  </main>
+
+  <footer class="py-8 text-center text-gray-500 text-sm">© 2025 — Activation vs Pooling Guide • For researchers and engineers</footer>
+</body>
+</html>
