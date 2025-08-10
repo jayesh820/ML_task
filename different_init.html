@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Understanding Different Initializers & Their Use Cases</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f172a;
+            color: #f1f5f9;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+        }
+        header {
+            background: linear-gradient(90deg, #0ea5e9, #8b5cf6);
+            padding: 2rem;
+            text-align: center;
+        }
+        header h1 {
+            margin: 0;
+            color: white;
+            font-size: 2.5rem;
+        }
+        main {
+            max-width: 900px;
+            margin: auto;
+            padding: 2rem;
+        }
+        section {
+            background: #1e293b;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        h2 {
+            color: #38bdf8;
+            border-bottom: 2px solid #334155;
+            padding-bottom: 0.5rem;
+        }
+        ul {
+            padding-left: 1.5rem;
+        }
+        li {
+            margin-bottom: 0.8rem;
+        }
+        code {
+            background: #334155;
+            padding: 0.3rem 0.5rem;
+            border-radius: 5px;
+            color: #fbbf24;
+            font-family: monospace;
+        }
+        footer {
+            text-align: center;
+            padding: 1rem;
+            background: linear-gradient(90deg, #0ea5e9, #8b5cf6);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Understanding Different Initializers & Their Use Cases</h1>
+    </header>
+
+    <main>
+        <section>
+            <h2>1. What is an Initializer?</h2>
+            <p>An <strong>initializer</strong> is a special method used in programming (commonly in object-oriented languages like Python, Swift, or Java) to prepare a new object for use. It sets up initial values for instance variables, allocates resources, and ensures the object starts in a valid state.</p>
+        </section>
+
+        <section>
+            <h2>2. Types of Initializers</h2>
+            <ul>
+                <li><strong>Default Initializer:</strong> Automatically provided if no custom initializer is defined. Useful when all properties have default values.</li>
+                <li><strong>Parameterized Initializer:</strong> Accepts arguments to set specific values during object creation.</li>
+                <li><strong>Copy Initializer:</strong> Creates a new object by copying data from another existing object.</li>
+                <li><strong>Convenience Initializer (Swift/Obj-C):</strong> A secondary initializer that calls another initializer to reduce code duplication.</li>
+                <li><strong>Failable Initializer:</strong> Can return <code>nil</code> or throw an error if initialization fails (e.g., invalid data).</li>
+                <li><strong>Static Initializer:</strong> Used to initialize static data members before any object is created.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>3. Python Example</h2>
+            <pre><code class="language-python">class Person:
+    def __init__(self, name, age):
+        self.name = name
+        self.age = age
+
+person1 = Person("Alice", 30)
+print(person1.name)  # Alice
+</code></pre>
+            <p>Here, <code>__init__</code> is the parameterized initializer that sets the name and age when creating a <code>Person</code> object.</p>
+        </section>
+
+        <section>
+            <h2>4. Swift Example</h2>
+            <pre><code class="language-swift">class Car {
+    var brand: String
+    var year: Int
+
+    // Parameterized Initializer
+    init(brand: String, year: Int) {
+        self.brand = brand
+        self.year = year
+    }
+
+    // Convenience Initializer
+    convenience init(brand: String) {
+        self.init(brand: brand, year: 2025)
+    }
+}
+
+let tesla = Car(brand: "Tesla")
+</code></pre>
+            <p>In Swift, the <code>convenience init</code> calls the designated initializer with default values.</p>
+        </section>
+
+        <section>
+            <h2>5. When to Use Which Initializer?</h2>
+            <ul>
+                <li><strong>Default:</strong> When you need a simple, quick object creation without custom setup.</li>
+                <li><strong>Parameterized:</strong> When you want flexibility in initializing values.</li>
+                <li><strong>Copy:</strong> When creating a duplicate of an existing object.</li>
+                <li><strong>Convenience:</strong> When simplifying repetitive initialization logic.</li>
+                <li><strong>Failable:</strong> When initialization can fail due to invalid conditions.</li>
+            </ul>
+        </section>
+    </main>
+
+    <footer>
+        <p>💡 Mastering initializers will help you write cleaner, safer, and more maintainable code.</p>
+    </footer>
+</body>
+</html>
