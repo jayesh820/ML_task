@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Inside LLMs — Llama 3 Deep Dive, APIs & Architecture</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}pre{background:#0b1220;color:#e6edf3;padding:1rem;border-radius:8px;overflow:auto}.card{box-shadow:0 10px 30px rgba(2,6,23,.06);}</style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+  <header class="py-12 bg-gradient-to-r from-indigo-50 to-cyan-50">
+    <div class="max-w-5xl mx-auto px-6">
+      <h1 class="text-3xl md:text-4xl font-extrabold">Inside LLMs — Llama 3 Deep Dive, APIs & Architecture</h1>
+      <p class="mt-4 text-gray-600">A practical, research-backed guide showing where to find an LLM's API, how to call it, and what its internal architecture looks like — plus deployment tips, examples, and a developer checklist.</p>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-6 -mt-8 pb-16">
+
+    <section class="bg-white p-6 rounded-2xl card mt-6">
+      <h2 class="text-2xl font-semibold">Why study a specific LLM?</h2>
+      <p class="mt-3 text-gray-600">Picking a concrete model helps bridge theory and practice: you can find its API, test inference, and map high-level architecture into deployable components (tokenizer, model weights, runtime, and monitoring).</p>
+    </section>
+
+    <section class="mt-6 grid md:grid-cols-2 gap-6">
+      <article class="bg-white p-6 rounded-2xl card">
+        <h3 class="text-xl font-semibold">Model chosen for this deep dive: <span class="text-indigo-600">Llama 3</span></h3>
+        <p class="mt-3 text-gray-600">Llama 3 is a family of models from Meta (lightweight to very large). It is widely used because of its performance-to-cost tradeoff and availability for on-prem or hosted use.</p>
+        <p class="mt-3 text-sm text-gray-400">(This post also references other modern LLMs — Mistral, Anthropic Claude, and OpenAI GPT-4o — for comparison and API examples.)</p>
+      </article>
+
+      <article class="bg-white p-6 rounded-2xl card">
+        <h3 class="text-xl font-semibold">Quick facts</h3>
+        <ul class="mt-3 list-disc list-inside text-gray-600">
+          <li>Model family: Llama 3 (multiple sizes).</li>
+          <li>Parameter ranges: from smaller tens of billions up to ~405B for the largest public Llama 3 variant.</li>
+          <li>Typical uses: chat assistants, code, search, summarization, and specialized fine-tuning.</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="bg-white p-6 rounded-2xl card mt-6">
+      <h2 class="text-2xl font-semibold">Where to find the API (hosted & self-hosting)</h2>
+      <p class="mt-3 text-gray-600">Options:</p>
+      <ol class="mt-3 list-decimal list-inside text-gray-600">
+        <li><strong>Official hosted API:</strong> Llama (the company) provides hosting and API docs to get started quickly.</li>
+        <li><strong>Cloud vendors / model hubs:</strong> Many clouds and platforms (e.g., Hugging Face, Render, Replicate) expose hosted endpoints for Llama-family models.</li>
+        <li><strong>Self-hosting:</strong> download weights and run on your own infra with runtimes like GGML, transformers + accelerate, or vLLM for GPU inference.</li>
+      </ol>
+
+      <h4 class="mt-4 font-semibold">Sample curl to call a hosted Llama API (pattern)</h4>
+      <pre><code>curl -X POST "https://api.llama.com/v1/completions" \
+  -H "Authorization: Bearer $LLAMA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"llama-3-70b","prompt":"Write a short poem about clouds.","max_tokens":150}'
+</code></pre>
+      <p class="mt-3 text-gray-600">Replace endpoint and payload fields based on the provider's spec (body names vary: "prompt" vs "input" or completion vs chat endpoints).</p>
+    </section>
+
+    <section class="bg-white p-6 rounded-2xl card mt-6">
+      <h2 class="text-2xl font-semibold">Internal architecture (high level)</h2>
+      <p class="mt-3 text-gray-600">Modern LLMs follow the Transformer architecture with refinements. Components to understand:</p>
+      <ul class="mt-3 list-disc list-inside text-gray-600">
+        <li><strong>Tokenizer:</strong> BPE/Unigram-style tokenizer that maps text ↔ tokens. Context window size matters for long inputs.</li>
+        <li><strong>Embedding layer:</strong> Token embeddings + positional encodings.</li>
+        <li><strong>Transformer blocks:</strong> Multi-head self-attention, feed-forward networks, normalization (LayerNorm variants), and residual connections. The number of layers (depth) and hidden size determine model capacity.</li>
+        <li><strong>Output head:</strong> Linear projection to vocabulary logits and softmax sampling.</li>
+        <li><strong>Efficiency features:</strong> FlashAttention, tensor parallelism, and quantization (8-bit, 4-bit) for faster, cheaper inference.</li>
+      </ul>
+
+      <h4 class="mt-4 font-semibold">Key structural parameters</h4>
+      <p class="mt-3 text-gray-600">When comparing models you should look for:</p>
+      <ul class="mt-3 list-disc list-inside text-gray-600">
+        <li>Parameter count (billions).</li>
+        <li>Context window (tokens).</li>
+        <li>Architecture variants (decoder-only, encoder-decoder for seq2seq).</li>
+        <li>Tokenization type and vocabulary size.</li>
+      </ul>
+    </section>
+
+    <section class="bg-white p-6 rounded-2xl card mt-6">
+      <h2 class="text-2xl font-semibold">Concrete Llama 3 details & sources</h2>
+      <p class="mt-3 text-gray-600">Llama 3 offers versions that scale up to very large parameter counts and is designed for both hosted use and self-hosting on customer infra. See the official docs for detailed API and deployment guides.</p>
+      <p class="mt-3 text-sm text-gray-400">(Official docs and modern coverage are linked in the Sources section below.)</p>
+    </section>
+
+    <section class="mt-6 grid md:grid-cols-2 gap-6">
+      <article class="bg-white p-6 rounded-2xl card">
+        <h3 class="text-xl font-semibold">Sample code: calling an LLM chat endpoint (Node.js)</h3>
+        <pre><code>// Node.js fetch example (replace URL + key per provider)
+const res = await fetch('https://api.llama.com/v1/chat/completions', {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${process.env.LLAMA_KEY}`, 'Content-Type': 'application/json' },
+  body: JSON.stringify({ model: 'llama-3-70b-chat', messages: [{ role: 'user', content: 'Explain attention in 3 lines.' }] })
+})
+const data = await res.json()
+console.log(data)
+</code></pre>
+      </article>
+
+      <article class="bg-white p-6 rounded-2xl card">
+        <h3 class="text-xl font-semibold">Self‑hosting options & runtimes</h3>
+        <ul class="mt-3 list-disc list-inside text-gray-600">
+          <li><strong>Transformers + accelerate</strong> — standard PyTorch stack for GPU inference and fine-tuning.</li>
+          <li><strong>vLLM</strong> — high-throughput inference for serving large models with memory optimizations.</li>
+          <li><strong>GGML / llama.cpp</strong> — CPU-focused inference for quantized models and local experimentation.</li>
+          <li><strong>Ray Serve / Triton</strong> — scalable model serving frameworks for production.</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="bg-white p-6 rounded-2xl card mt-6">
+      <h2 class="text-2xl font-semibold">Evaluation, limitations & safety</h2>
+      <p class="mt-3 text-gray-600">Evaluate models on metrics relevant to your use case: accuracy, truthfulness (factuality), hallucination rate, latency, cost, and context-handling. Be mindful of safety: toxic content, data leakage, and chain-of-thought vulnerabilities when exposing models via APIs.</p>
+    </section>
+
+    <section class="bg-white p-6 rounded-2xl card mt-6">
+      <h2 class="text-2xl font-semibold">Deployment checklist for developers</h2>
+      <ol class="mt-3 list-decimal list-inside text-gray-600">
+        <li>Choose hosted vs self-hosted based on latency, cost, and compliance.</li>
+        <li>Pick runtime (vLLM, Triton, or standard PyTorch) and enable quantization where acceptable.</li>
+        <li>Implement rate limits, logging, and telemetry for prompts/responses (PII handling).</li>
+        <li>Apply prompt filters and content moderation pipelines.</li>
+        <li>Benchmark with representative prompt load and measure cost per 1k tokens.</li>
+      </ol>
+    </section>
+
+    <section class="bg-white p-6 rounded-2xl card mt-6">
+      <h2 class="text-2xl font-semibold">Business use cases & examples</h2>
+      <ul class="mt-3 list-disc list-inside text-gray-600">
+        <li>Conversational assistants & customer support</li>
+        <li>Code generation and automated code review</li>
+        <li>Summarization and document understanding</li>
+        <li>Search ranking and semantic embeddings (vector stores)</li>
+      </ul>
+    </section>
+
+    <section class="bg-white p-6 rounded-2xl card mt-6" id="sources">
+      <h3 class="text-xl font-semibold">Sources & further reading</h3>
+      <ul class="mt-3 list-disc list-inside text-gray-600">
+        <li>Official Llama docs and getting started guides (provider-specific).</li>
+        <li>Mistral AI API docs — quick reference for alternative LLM APIs.</li>
+        <li>Anthropic (Claude) API docs and developer platform.</li>
+        <li>OpenAI announcements for GPT-4o and multimodal advances.</li>
+        <li>Industry coverage and model announcements (news & analysis).</li>
+      </ul>
+      <p class="mt-3 text-sm text-gray-400">If you want, I can replace each bullet above with full URL links to the exact API docs and papers and also insert live example keys (mocked) to test locally. I can also convert this to a React template or produce a downloadable PDF.</p>
+    </section>
+
+  </main>
+
+  <footer class="py-8 text-center text-gray-500 text-sm">© 2025 — LLM Deep Dive Blog • Built for engineers</footer>
+</body>
+</html>
