@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Data Imputation Techniques: A Practical Guide</title>
+  <meta name="description" content="A comprehensive, practical guide to data imputation techniques for handling missing data in analytics and machine learning." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Source+Code+Pro:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --bg: #0b0d10;
+      --surface: #12161b;
+      --muted: #1c2229;
+      --text: #e6eaf0;
+      --text-dim: #a9b1bb;
+      --brand: #6ea8fe;
+      --brand-2: #7ee787;
+      --accent: #f2cc60;
+      --danger: #ff8080;
+      --shadow: 0 10px 30px rgba(0,0,0,0.35);
+      --radius: 16px;
+      --radius-sm: 10px;
+      --maxw: 960px;
+    }
+    /* Light theme */
+    @media (prefers-color-scheme: light){
+      :root{
+        --bg: #f7f9fc;
+        --surface: #ffffff;
+        --muted: #eef2f7;
+        --text: #0b1320;
+        --text-dim: #556070;
+        --brand: #2563eb;
+        --brand-2: #059669;
+        --accent: #c47d10;
+        --danger: #dc2626;
+        --shadow: 0 8px 24px rgba(16,24,40,0.08);
+      }
+    }
+    [data-theme="light"]{
+      --bg: #f7f9fc;
+      --surface: #ffffff;
+      --muted: #eef2f7;
+      --text: #0b1320;
+      --text-dim: #556070;
+      --brand: #2563eb;
+      --brand-2: #059669;
+      --accent: #c47d10;
+      --danger: #dc2626;
+      --shadow: 0 8px 24px rgba(16,24,40,0.08);
+    }
+    [data-theme="dark"]{
+      --bg: #0b0d10;
+      --surface: #12161b;
+      --muted: #1c2229;
+      --text: #e6eaf0;
+      --text-dim: #a9b1bb;
+      --brand: #6ea8fe;
+      --brand-2: #7ee787;
+      --accent: #f2cc60;
+      --danger: #ff8080;
+      --shadow: 0 10px 30px rgba(0,0,0,0.35);
+    }
+
+    *{ box-sizing: border-box; }
+    html, body{ margin:0; padding:0; background:var(--bg); color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+
+    /* Header */
+    .header{
+      position: sticky; top: 0; z-index: 30;
+      backdrop-filter: blur(8px);
+      background: color-mix(in srgb, var(--bg) 75%, transparent);
+      border-bottom: 1px solid var(--muted);
+    }
+    .nav{
+      max-width: var(--maxw); margin: 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 14px 20px;
+    }
+    .brand{
+      display:flex; align-items:center; gap: 10px; font-weight:800; letter-spacing: 0.2px;
+    }
+    .badge{
+      width: 30px; height: 30px; border-radius: 8px; display:grid; place-items:center; background:linear-gradient(135deg, var(--brand), var(--brand-2)); color:#081018; font-weight:800; box-shadow: var(--shadow);
+    }
+    .nav a{
+      color: var(--text-dim); text-decoration: none; margin-left: 18px; font-weight: 500;
+    }
+    .nav a:hover{ color: var(--text); }
+
+    .theme-toggle{
+      border: 1px solid var(--muted); background: var(--surface); color: var(--text);
+      border-radius: 999px; padding: 8px 12px; cursor: pointer; box-shadow: var(--shadow);
+    }
+
+    /* Hero */
+    .hero{
+      max-width: var(--maxw); margin: 40px auto 10px; padding: 0 20px 10px;
+    }
+    .hero-card{
+      background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 92%, transparent), color-mix(in srgb, var(--surface) 95%, transparent));
+      border:1px solid var(--muted);
+      border-radius: var(--radius);
+      padding: 28px;
+      box-shadow: var(--shadow);
+    }
+    .kicker{
+      display:inline-flex; gap:8px; align-items:center; font-size: 12px; font-weight:600; color: var(--brand);
+      background: color-mix(in srgb, var(--brand) 12%, transparent);
+      padding: 6px 10px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--brand) 30%, transparent);
+    }
+    h1{
+      margin: 14px 0 10px; font-size: clamp(28px, 5vw, 40px); line-height:1.1;
+    }
+    .subhead{
+      color: var(--text-dim); font-size: 16px; max-width: 70ch;
+    }
+    .meta{
+      display:flex; flex-wrap:wrap; gap:10px; color: var(--text-dim); margin-top: 14px; font-size: 14px;
+    }
+    .tags{
+      display:flex; gap:8px; flex-wrap:wrap; margin-top: 14px;
+    }
+    .tag{
+      font-size: 12px; color: var(--text-dim);
+      background: color-mix(in srgb, var(--text-dim) 12%, transparent);
+      border:1px solid var(--muted);
+      padding: 6px 10px; border-radius: 999px;
+    }
+
+    /* Layout */
+    .container{ max-width: var(--maxw); margin: 0 auto; padding: 10px 20px 80px; display: grid; grid-template-columns: 1fr; gap: 24px; }
+    @media (min-width: 1024px){
+      .container{ grid-template-columns: 240px 1fr; gap: 28px; }
+    }
+
+    /* TOC */
+    .toc{
+      position: sticky; top: 78px; align-self: start;
+      background: var(--surface); border:1px solid var(--muted); border-radius: var(--radius-sm); padding: 16px; box-shadow: var(--shadow);
+    }
+    .toc h3{ margin: 4px 0 10px; font-size: 14px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .08em; }
+    .toc a{
+      display:block; padding: 8px 6px; color: var(--text-dim); text-decoration: none; border-radius: 8px; font-size: 14px;
+    }
+    .toc a:hover{ background: color-mix(in srgb, var(--brand) 12%, transparent); color: var(--text); }
+
+    /* Article */
+    article{
+      background: var(--surface); border:1px solid var(--muted); border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow);
+    }
+    article h2{ margin-top: 28px; font-size: 24px; }
+    article h3{ margin-top: 20px; font-size: 18px; color: var(--text); }
+    p{ color: var(--text); line-height: 1.7; }
+    .lead{ font-size: 18px; color: var(--text-dim); }
+    .callout{
+      margin: 18px 0; padding: 14px 16px; border-left: 4px solid var(--brand);
+      background: color-mix(in srgb, var(--brand) 10%, transparent); border-radius: 12px;
+    }
+    .warn{ border-left-color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+
+    ul, ol{ padding-left: 18px; }
+    li{ margin: 8px 0; color: var(--text); }
+
+    .grid{
+      display:grid; gap: 18px;
+    }
+    @media (min-width: 720px){
+      .grid.two{ grid-template-columns: 1fr 1fr; }
+    }
+
+    /* Cards */
+    .card{
+      background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 95%, transparent), color-mix(in srgb, var(--surface) 98%, transparent));
+      border:1px solid var(--muted); border-radius: 14px; padding: 14px 16px;
+    }
+    .card h4{ margin: 6px 0 8px; font-size: 16px; }
+    .muted{ color: var(--text-dim); }
+
+    /* Code */
+    pre{
+      margin: 16px 0; background: #0d1117; color: #e6edf3; padding: 14px; border-radius: 12px; overflow:auto; border: 1px solid #1f2937;
+    }
+    code{ font-family: "Source Code Pro", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+    /* Table */
+    .table-wrap{ overflow:auto; border:1px solid var(--muted); border-radius: 12px; }
+    table{ width: 100%; border-collapse: collapse; min-width: 640px; }
+    th, td{ padding: 12px 14px; border-bottom: 1px solid var(--muted); text-align: left; }
+    th{ color: var(--text-dim); font-weight: 600; background: color-mix(in srgb, var(--muted) 35%, transparent); position: sticky; top: 0; }
+    tr:hover td{ background: color-mix(in srgb, var(--brand) 7%, transparent); }
+
+    /* Footer */
+    .footer{
+      max-width: var(--maxw); margin: 0 auto 60px; padding: 0 20px;
+      display:flex; justify-content: space-between; gap: 10px; color: var(--text-dim);
+    }
+
+    .btn{
+      display:inline-flex; align-items:center; gap:8px;
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      color:#081018; border:none; border-radius: 12px; padding: 10px 14px; font-weight:700; cursor:pointer; box-shadow: var(--shadow);
+    }
+    .btn.secondary{
+      background: transparent; color: var(--text);
+      border:1px solid var(--muted);
+    }
+    .inline-cta{
+      display:flex; gap:10px; flex-wrap:wrap; margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <nav class="nav">
+      <div class="brand">
+        <div class="badge">DI</div>
+        <div>Data Imputation Guide</div>
+      </div>
+      <div>
+        <a href="#overview">Overview</a>
+        <a href="#methods">Methods</a>
+        <a href="#choosing">Choosing</a>
+        <a href="#code">Code</a>
+        <button class="theme-toggle" id="themeBtn" aria-label="Toggle theme">Toggle theme</button>
+      </div>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="hero-card">
+      <span class="kicker">Missing Data • Practical Guide</span>
+      <h1>Data Imputation Techniques: From Simple Fills to Advanced Models</h1>
+      <p class="subhead">A hands-on overview of imputation methods including mean/median/mode, forward/backward fill, interpolation, KNN, regression, iterative multivariate imputation, multiple imputation, hot/cold deck, and advanced approaches—plus guidance on when to use each and how to validate.</p>
+      <div class="meta">
+        <div>Updated: Aug 2025</div>
+        <div>Read time: 10–15 min</div>
+      </div>
+      <div class="tags">
+        <span class="tag">ML</span>
+        <span class="tag">Data Cleaning</span>
+        <span class="tag">Time Series</span>
+        <span class="tag">Statistics</span>
+      </div>
+      <div class="inline-cta">
+        <a class="btn" href="#code">Jump to Code</a>
+        <a class="btn secondary" href="#methods">Explore Methods</a>
+      </div>
+    </div>
+  </section>
+
+  <main class="container">
+    <aside class="toc" aria-label="Table of contents">
+      <h3>Contents</h3>
+      <a href="#overview">Overview</a>
+      <a href="#missingness">Missingness Types</a>
+      <a href="#methods">Core Techniques</a>
+      <a href="#time-series">Time-Series Methods</a>
+      <a href="#advanced">Advanced Methods</a>
+      <a href="#choosing">How to Choose</a>
+      <a href="#validation">Validation & QA</a>
+      <a href="#code">Code Examples</a>
+      <a href="#faq">FAQ</a>
+    </aside>
+
+    <article>
+      <section id="overview">
+        <h2>Overview</h2>
+        <p class="lead">Imputation replaces missing values with plausible entries to enable robust analytics and modeling. The right technique depends on the data type, the mechanism of missingness, and downstream goals (prediction vs. statistical inference).</p>
+        <div class="callout">
+          Tip: Start with an audit—quantify percent missing per column, visualize patterns, and understand collection processes. This informs both method choice and risk.
+        </div>
+      </section>
+
+      <section id="missingness">
+        <h2>Missingness Types (Why data is missing)</h2>
+        <div class="grid two">
+          <div class="card">
+            <h4>MCAR</h4>
+            <p class="muted">Missing Completely At Random: missingness independent of observed/unobserved data. Simple methods often acceptable.</p>
+          </div>
+          <div class="card">
+            <h4>MAR</h4>
+            <p class="muted">Missing At Random: depends on observed variables. Multivariate/model-based approaches are preferred.</p>
+          </div>
+          <div class="card">
+            <h4>MNAR</h4>
+            <p class="muted">Missing Not At Random: depends on unobserved values. May require modeling the missingness process or domain rules.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="methods">
+        <h2>Core Techniques</h2>
+
+        <h3>1) Simple Fills</h3>
+        <ul>
+          <li><strong>Mean/Median</strong> (numeric): fast baseline; median is robust to outliers.</li>
+          <li><strong>Mode</strong> (categorical): preserves the most frequent category.</li>
+          <li><strong>Constant/“Unknown”</strong>: explicit placeholder for categorical text or sentinel numeric.</li>
+          <li><strong>Min/Max boundary</strong>: use known measurement bounds when devices saturate.</li>
+        </ul>
+        <div class="callout warn">
+          Caution: Simple fills can bias distributions and shrink variance—monitor impact on correlations and model performance.
+        </div>
+
+        <h3>2) Nearest-Neighbor</h3>
+        <ul>
+          <li><strong>KNN imputation</strong>: use similar rows to fill values (mean for numeric, mode for categorical). Sensitive to scaling and k.</li>
+        </ul>
+
+        <h3>3) Model-Based</h3>
+        <ul>
+          <li><strong>Regression/Classification</strong>: predict missing values using other features.</li>
+          <li><strong>Iterative Multivariate (MICE)</strong>: model each feature with missing data in rounds, capturing complex relationships.</li>
+          <li><strong>Multiple Imputation</strong>: generate multiple completed datasets and pool results for valid inference.</li>
+        </ul>
+
+        <h3>4) Survey/Official Stats</h3>
+        <ul>
+          <li><strong>Hot deck</strong>: borrow from similar records within the same dataset.</li>
+          <li><strong>Cold deck</strong>: borrow from an external reference dataset.</li>
+        </ul>
+      </section>
+
+      <section id="time-series">
+        <h2>Time-Series Methods</h2>
+        <ul>
+          <li><strong>Forward/Backward fill</strong>: propagate adjacent values when local continuity is expected.</li>
+          <li><strong>Linear interpolation</strong>: bridge gaps assuming smooth change.</li>
+          <li><strong>Rolling averages</strong>: smooth noise; beware of lag/phase distortion.</li>
+          <li><strong>Seasonal-aware</strong>: impute using seasonal neighbors (e.g., same weekday/hour).</li>
+        </ul>
+      </section>
+
+      <section id="advanced">
+        <h2>Advanced Methods</h2>
+        <ul>
+          <li><strong>Tree-based</strong> (e.g., MissForest): robust to nonlinearity and mixed data types.</li>
+          <li><strong>Matrix completion</strong>: factorization for high-dimensional sparse tables.</li>
+          <li><strong>Deep learning</strong> (e.g., VAEs/GAIN, specialized temporal models): strong on complex structure; requires data and validation.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Comparison at a Glance</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>Data Types</th>
+                <th>Pros</th>
+                <th>Cons</th>
+                <th>When to Use</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Mean/Median/Mode</td>
+                <td>Numeric/Categorical</td>
+                <td>Fast, simple</td>
+                <td>Bias, variance shrinkage</td>
+                <td>Low missingness, MCAR baseline</td>
+              </tr>
+              <tr>
+                <td>KNN</td>
+                <td>Mixed</td>
+                <td>Leverages structure</td>
+                <td>Costly, scaling sensitive</td>
+                <td>Moderate size, correlated features</td>
+              </tr>
+              <tr>
+                <td>Regression</td>
+                <td>Numeric/Categorical</td>
+                <td>Preserves relationships</td>
+                <td>Underestimates uncertainty</td>
+                <td>Predictive tasks</td>
+              </tr>
+              <tr>
+                <td>MICE</td>
+                <td>Mixed</td>
+                <td>Handles complex dependence</td>
+                <td>Compute-heavy</td>
+                <td>MAR scenarios, multivariate</td>
+              </tr>
+              <tr>
+                <td>Multiple Imputation</td>
+                <td>Mixed</td>
+                <td>Valid inference</td>
+                <td>Complex workflow</td>
+                <td>Statistical inference</td>
+              </tr>
+              <tr>
+                <td>Fwd/Bwd/Interp</td>
+                <td>Time series</td>
+                <td>Temporal continuity</td>
+                <td>Can propagate error</td>
+                <td>Short gaps, smooth signals</td>
+              </tr>
+              <tr>
+                <td>Advanced (DL/Matrix)</td>
+                <td>High-dim/Temporal</td>
+                <td>High accuracy potential</td>
+                <td>Data-hungry, tuning</td>
+                <td>Large/complex datasets</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="choosing">
+        <h2>How to Choose</h2>
+        <ol>
+          <li><strong>Diagnose missingness</strong>: MCAR/MAR/MNAR and percent missing by column/row.</li>
+          <li><strong>Match to data shape</strong>: tabular vs. time series; categorical vs. numeric; correlations.</li>
+          <li><strong>Set objective</strong>: prediction vs. inference—prefer multiple imputation for inference.</li>
+          <li><strong>Start simple, escalate</strong>: baseline with simple fills; iterate to KNN/MICE; consider advanced if needed.</li>
+          <li><strong>Validate</strong>: quantify error via masking, distribution checks, correlation integrity, and downstream model impact.</li>
+        </ol>
+      </section>
+
+      <section id="validation">
+        <h2>Validation & Quality Checks</h2>
+        <ul>
+          <li><strong>Mask-and-score</strong>: hide known values and measure MAE/RMSE after imputation.</li>
+          <li><strong>Distribution integrity</strong>: compare histograms/CDFs; use KS tests for shifts.</li>
+          <li><strong>Relationships</strong>: correlation/covariance preservation; feature-target drift.</li>
+          <li><strong>Uncertainty</strong>: multiple imputation to propagate imputation variance in standard errors.</li>
+          <li><strong>Business rules</strong>: enforce ranges, monotonicity, or domain constraints.</li>
+        </ul>
+      </section>
+
+      <section id="code">
+        <h2>Code Examples</h2>
+
+        <h3>Python (scikit-learn, pandas)</h3>
+        <pre><code class="language-python">import pandas as pd
+from sklearn.impute import SimpleImputer, KNNImputer
+from sklearn.experimental import enable_iterative_imputer  # noqa: F401
+from sklearn.impute import IterativeImputer
+
+df = pd.read_csv("data.csv")
+
+# 1) Simple imputers
+num_cols = df.select_dtypes(include=["number"]).columns
+cat_cols = df.select_dtypes(exclude=["number"]).columns
+
+df[num_cols] = SimpleImputer(strategy="median").fit_transform(df[num_cols])
+df[cat_cols] = SimpleImputer(strategy="most_frequent").fit_transform(df[cat_cols])
+
+# 2) KNN imputation (numeric only)
+knn = KNNImputer(n_neighbors=5, weights="distance")
+df[num_cols] = knn.fit_transform(df[num_cols])
+
+# 3) Iterative multivariate (MICE-like)
+mice = IterativeImputer(random_state=42, max_iter=10, sample_posterior=True)
+df[num_cols] = mice.fit_transform(df[num_cols])
+
+# 4) Time series forward/backward fill
+ts = pd.read_csv("timeseries.csv", parse_dates=["timestamp"]).sort_values("timestamp").set_index("timestamp")
+ts["value_ffill"] = ts["value"].ffill().bfill()
+ts["value_interp"] = ts["value"].interpolate(method="time")</code></pre>
+
+        <h3>R (mice, VIM)</h3>
+        <pre><code class="language-r">library(mice)
+library(VIM)
+
+df &lt;- read.csv("data.csv")
+
+# 1) Quick simple imputation
+df$age[is.na(df$age)] &lt;- median(df$age, na.rm=TRUE)
+
+# 2) MICE
+imp &lt;- mice(df, m=5, maxit=10, method='pmm', seed=123)
+completed &lt;- complete(imp, action="long")
+
+# 3) KNN (VIM)
+df_knn &lt;- kNN(df, k=5)</code></pre>
+
+        <h3>Pandas: Time-Series Interpolation</h3>
+        <pre><code class="language-python">ts["linear"] = ts["value"].interpolate(method="linear")
+ts["spline"] = ts["value"].interpolate(method="spline", order=3)
+ts["nearest"] = ts["value"].interpolate(method="nearest")</code></pre>
+      </section>
+
+      <section id="faq">
+        <h2>FAQ</h2>
+        <h3>Does imputation always help?</h3>
+        <p>Imputation enables models to train but can introduce bias. Validate rigorously; sometimes modeling missingness indicators helps.</p>
+
+        <h3>What if data is MNAR?</h3>
+        <p>Consider explicit modeling of missingness, use domain rules, or sensitivity analyses; simple fills may be misleading.</p>
+
+        <h3>Should I scale before KNN?</h3>
+        <p>Yes. Standardize numeric features to ensure distance metrics are meaningful.</p>
+      </section>
+
+      <section>
+        <h2>Download & Reuse</h2>
+        <p>Feel free to reuse this template. Swap in project branding, update colors, and embed live code snippets or charts as needed.</p>
+      </section>
+    </article>
+  </main>
+
+  <div class="footer">
+    <div>© 2025 • Data Imputation Guide</div>
+    <div>Built with semantic HTML, responsive CSS, and no external dependencies.</div>
+  </div>
+
+  <script>
+    // Theme toggle with persistence
+    const btn = document.getElementById('themeBtn');
+    const root = document.documentElement;
+    const saved = localStorage.getItem('theme');
+    if(saved){ root.setAttribute('data-theme', saved); }
+    btn.addEventListener('click', ()=>{
+      const current = root.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark':'light');
+      const next = current === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+    });
+
+    // Smooth scroll
+    document.querySelectorAll('a[href^="#"]').forEach(a=>{
+      a.addEventListener('click', e=>{
+        const id = a.getAttribute('href').slice(1);
+        const el = document.getElementById(id);
+        if(el){
+          e.preventDefault();
+          el.scrollIntoView({behavior:'smooth', block:'start'});
+          history.pushState(null, '', '#'+id);
+        }
+      });
+    });
+  </script>
+</body>
+</html>
