@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Optimizers — Use Cases, Patterns & Practical Guide</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+    .card{box-shadow:0 10px 30px rgba(2,6,23,.06)}
+    pre{background:#0b1220;color:#e6edf3;padding:1rem;border-radius:8px;overflow:auto}
+    table{border-collapse:collapse;width:100%}
+    td,th{border:1px solid #e6e9ee;padding:.5rem;text-align:left}
+    .badge{background:linear-gradient(90deg,#7c3aed,#06b6d4);color:white;padding:.2rem .6rem;border-radius:999px}
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+  <header class="py-12 bg-gradient-to-r from-indigo-50 to-cyan-50">
+    <div class="max-w-6xl mx-auto px-6">
+      <h1 class="text-3xl md:text-4xl font-extrabold">Optimizers — Use Cases, Patterns & Practical Guide</h1>
+      <p class="mt-4 text-gray-600 max-w-3xl">A deep, hands-on guide to optimization algorithms used in modern machine learning — when to use which optimizer, real-world use cases, code snippets, tuning recipes, and an experimental plan for benchmarking.</p>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-6 -mt-8 pb-16">
+
+    <section class="bg-white p-6 rounded-2xl card mt-6">
+      <h2 class="text-2xl font-semibold">Executive Summary</h2>
+      <p class="mt-3 text-gray-600">Choosing the right optimizer can speed convergence, improve generalization, stabilize training, and reduce compute cost. This guide maps optimizer families to common use cases (CV, NLP, large-batch, fine-tuning, federated learning, GANs, RL) and provides practical rules, code examples, and diagnostics.</p>
+    </section>
+
+    <section class="mt-6 grid md:grid-cols-2 gap-6">
+      <article class="bg-white p-6 rounded-2xl card">
+        <h3 class="text-xl font-semibold">Optimizer families covered</h3>
+        <ul class="mt-3 list-disc list-inside text-gray-600">
+          <li>SGD & Momentum / Nesterov</li>
+          <li>Adaptive methods: Adagrad, RMSprop, Adam, AdamW, AdaBelief</li>
+          <li>Large-batch optimizers: LARS, LAMB</li>
+          <li>Sharpness-aware: SAM</li>
+          <li>Hybrid & recent variants: Ranger, NovoGrad</li>
+          <li>Sparse optimizers: SparseAdam</li>
+        </ul>
+      </article>
+
+      <article class="bg-white p-6 rounded-2xl card">
+        <h3 class="text-xl font-semibold">When optimizer choice matters most</h3>
+        <ul class="mt-3 list-disc list-inside text-gray-600">
+          <li>Large-scale training (Transformer / ViT) — often prefer AdamW + warmup.</li>
+          <li>Image classification with large batches — use LARS/LAMB with scaled LR.</li>
+          <li>Training GANs — SGD variants or RMSprop stabilizers and careful tuning.</li>
+          <li>Reinforcement Learning — RMSprop/Adam variants with gradient clipping.</li>
+          <li>Federated & mobile training — adaptive methods with compression-aware updates.</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="bg-white p-6 rounded-2xl card mt-6">
+      <h2 class="text-2xl font-semibold">Detailed use cases</h2>
+
+      <article class="mt-4">
+        <h4 class="font-semibold">1) Computer Vision (CNNs, ViT)</h4>
+        <p class="text-gray-600 mt-2">Small to medium datasets & models: SGD with Momentum (or Nesterov) + step or cosine decay often yields better generalization. For very large models (Vision Transformers) and pretraining, AdamW with linear warmup + weight decay is standard. Large-batch pretraining benefits from LARS/LAMB.</p>
+      </article>
+
+      <article class="mt-4">
+        <h4 class="font-semibold">2) Natural Language Processing (Transformers)</h4>
+        <p class="text-gray-600 mt-2">Adam / AdamW variants are dominant. Key patterns: use AdamW (decoupled weight decay), linear LR warmup (e.g., 10k steps), and cosine or linear decay. For very large models, scale learning rate with sqrt(learning_rate * global_batch) and consider LAMB for optimizer scaling with huge batch sizes.</p>
+      </article>
+
+      <article class="mt-4">
+        <h4 class="font-semibold">3) Transfer Learning & Fine-tuning</h4>
+        <p class="text-gray-600 mt-2">Often use AdamW with a lower LR for pre-trained layers and a higher LR for newly initialized heads (layer-wise LR decay). For stable fine-tuning, use weight decay and smaller batch sizes; SGD can be preferable if you have labeled data and want strong generalization.</p>
+      </article>
+
+      <article class="mt-4">
+        <h4 class="font-semibold">4) Generative models & GANs</h4>
+        <p class="text-gray-600 mt-2">GAN training is sensitive. Historically RMSprop or Adam with specific hyperparameters (e.g., beta1=0.5) were used. Recent practice: carefully tuned Adam/AdamW variants, spectral normalization, and discriminator updates per generator update. Consider two-time-scale update rules.</p>
+      </article>
+
+      <article class="mt-4">
+        <h4 class="font-semibold">5) Reinforcement Learning</h4>
+        <p class="text-gray-600 mt-2">Policy gradient methods often use RMSprop or Adam. Algorithms like PPO commonly use Adam with gradient clipping; stability often improves with normalization (reward / advantage) and adaptive LR schedules.</p>
+      </article>
+
+      <article class="mt-4">
+        <h4 class="font-semibold">6) Federated Learning</h4>
+        <p class="text-gray-600 mt-2">Local SGD or adaptive optimizers with compression-aware updates are common. Algorithms like FedAvg use local SGD; adaptive methods help when clients have heterogenous data distributions.</p>
+      </article>
+
+      <article class="mt-4">
+        <h4 class="font-semibold">7) Sparse models & Embeddings</h4>
+        <p class="text-gray-600 mt-2">SparseAdam or per-parameter adaptive updates are useful for large embedding tables (NLP recommender systems). Adagrad historically used for sparse updates; Adam variants now common with careful LR scheduling.</p>
+      </article>
+
+    </section>
+
+    <section class="bg-white p-6 rounded-2xl card mt-6">
+      <h2 class="text-2xl font-semibold">Practical recipes & tuning tips</h2>
+      <ul class="mt-3 list-disc list-inside text-gray-600">
+        <li><strong>Learning rate first:</strong> LR is the single most important hyperparameter. Use LR range test or sweep.</li>
+        <li><strong>Warmup:</strong> For Adam/AdamW, use linear warmup (e.g., 1k–10k steps) to stabilize early training.</li>
+        <li><strong>Weight decay:</strong> Use decoupled weight decay (AdamW); tune by regularization need (1e-2 to 1e-6 ranges).</li>
+        <li><strong>Momentum:</strong> For SGD, 0.9 is a good default; Nesterov often helps slightly.</li>
+        <li><strong>Batch size scaling:</strong> Adjust LR with batch size; linear scaling rule or LARS/LAMB for very large batches.</li>
+        <li><strong>Gradient clipping:</strong> Clip by norm (e.g., 1.0–5.0) for RL and GANs to stabilize updates.</li>
+        <li><strong>Use schedulers:</strong> Cosine/step/OneCycle can boost generalization. OneCycle with SGD often yields strong results.</li>
+      </ul>
+    </section>
+
+    <section class="bg-white p-6 rounded-2xl card mt-6">
+      <h2 class="text-2xl font-semibold">Code snippets (PyTorch & TensorFlow)</h2>
+      <h4 class="mt-3 font-semibold">PyTorch — AdamW with layer-wise LR & scheduler</h4>
+      <pre><code>import torch
+from torch import nn
+from torch.optim import AdamW
+from transformers import get_linear_schedule_with_warmup
+
+model = ...
+no_decay = ['bias', 'LayerNorm.weight']
+optimizer_grouped_parameters = [
+    {'params': [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)], 'weight_decay': 0.01},
+    {'params': [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
+]
+optimizer = AdamW(optimizer_grouped_parameters, lr=2e-5)
+num_training_steps = 10000
+scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=1000, num_training_steps=num_training_steps)
+</code></pre>
+
+      <h4 class="mt-3 font-semibold">TensorFlow — LARS for large-batch training</h4>
+      <pre><code>import tensorflow as tf
+from tensorflow_addons.optimizers import LARS
+
+base_optimizer = tf.keras.optimizers.SGD(learning_rate=0.1, momentum=0.9)
+optimizer = LARS(learning_rate=0.1, momentum=0.9, weight_decay=1e-4, eeta=0.001, epsilon=1e-9)
+model.compile(optimizer=optimizer, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+</code></pre>
+    </section>
+
+    <section class="bg-white p-6 rounded-2xl card mt-6">
+      <h2 class="text-2xl font-semibold">Advanced topics & recent innovations</h2>
+      <ul class="mt-3 list-disc list-inside text-gray-600">
+        <li><strong>SAM (Sharpness-Aware Minimization):</strong> Optimizes for flat minima; can boost generalization when combined with Adam or SGD.</li>
+        <li><strong>AdaBelief:</strong> Keeps Adam-style adaptivity but corrects update direction for better generalization.</li>
+        <li><strong>Ranger (RAdam + Lookahead):</strong> Combines rectified Adam with lookahead mechanism for stability.</li>
+        <li><strong>Optimizers for 8-bit / quantized training:</strong> Recent work allows optimizer state compression to reduce memory (e.g., Adafactor-like methods).</li>
+        <li><strong>Distributed optimizers:</strong> LAMB and LARS designed for scaling to thousands of GPUs; communication-efficient variants exist (gradient compression, quantization).</li>
+      </ul>
+    </section>
+
+    <section class="bg-white p-6 rounded-2xl card mt-6">
+      <h2 class="text-2xl font-semibold">Benchmark & experimental plan</h2>
+      <p class="text-gray-600 mt-2">A reproducible benchmark across tasks will help pick the right optimizer. Suggested experiments:</p>
+      <ol class="mt-3 list-decimal list-inside text-gray-600">
+        <li>Tasks: CIFAR-10 (CV), ImageNet-small, GLUE (NLP), and a small RL environment (CartPole).</li>
+        <li>Optimizers: SGD (0.9), Adam, AdamW, LARS, LAMB, SAM+Adam, AdaBelief.</li>
+        <li>Metrics: final accuracy, epochs-to-convergence, wall-clock time, peak memory, sensitivity to LR.</li>
+        <li>Protocol: 3 seeds, fixed budgets, log results to CSV + MLflow or Weights & Biases for visualization.</li>
+      </ol>
+    </section>
+
+    <section class="bg-white p-6 rounded-2xl card mt-6">
+      <h2 class="text-2xl font-semibold">Diagnostics & failures</h2>
+      <ul class="mt-3 list-disc list-inside text-gray-600">
+        <li>Loss plateau: try LR schedule or increase LR temporarily (LR finder/OneCycle).</li>
+        <li>Instability / NaNs: reduce LR, check for exploding gradients, use gradient clipping, or try Adam-family optimizer.</li>
+        <li>Poor generalization: try SGD with momentum, add weight decay, or use SAM.</li>
+        <li>Slow convergence with large batches: use LARS/LAMB or tune warmup and LR scaling.</li>
+      </ul>
+    </section>
+
+    <section class="bg-white p-6 rounded-2xl card mt-6">
+      <h2 class="text-2xl font-semibold">Quick reference table</h2>
+      <table class="mt-4">
+        <thead><tr><th>Optimizer</th><th>Best for</th><th>Pros</th><th>Cons</th></tr></thead>
+        <tbody>
+          <tr><td>SGD + Momentum</td><td>Small-medium datasets, CV</td><td>Good generalization, cheap</td><td>Slow to converge, needs LR tuning</td></tr>
+          <tr><td>Adam / AdamW</td><td>NLP, Transformers, quick prototyping</td><td>Fast convergence, minimal tuning</td><td>Sometimes worse generalization; needs weight decay</td></tr>
+          <tr><td>LARS / LAMB</td><td>Large-batch pretraining</td><td>Scales LR with batch size</td><td>More complex, extra hyperparams</td></tr>
+          <tr><td>SAM</td><td>Improve generalization</td><td>Better generalization</td><td>Requires additional gradient computations</td></tr>
+          <tr><td>AdaBelief</td><td>General-purpose</td><td>Combines Adam speed with improved generalization</td><td>Less battle-tested at massive scale</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="bg-white p-6 rounded-2xl card mt-6" id="references">
+      <h2 class="text-2xl font-semibold">References & further reading</h2>
+      <ul class="mt-3 list-disc list-inside text-gray-600">
+        <li>Kingma, D. P., & Ba, J. (2015). Adam: A Method for Stochastic Optimization.</li>
+        <li>Loshchilov, Ilya, & Hutter, Frank. (2019). Decoupled Weight Decay Regularization (AdamW).</li>
+        <li>Zhang, L., et al. (2020). LAMB optimizer for large batch training.</li>
+        <li>Foret, P., et al. (2020). Sharpness-Aware Minimization (SAM).</li>
+        <li>Zhuang et al. AdaBelief: Adapting Stepsizes by the Belief in Observed Gradients.</li>
+      </ul>
+      <p class="mt-3 text-sm text-gray-400">If you want, I can fetch direct arXiv / DOI links and embed them into the page, or run small benchmarks and add charts to the blog.</p>
+    </section>
+
+    <section class="mt-6 text-sm text-gray-500">
+      <p>Next: convert into a React docs site, output a printable PDF, produce Jupyter notebooks for each benchmark, or run experiments and include plots. Tell me which and I’ll do it.</p>
+    </section>
+
+  </main>
+
+  <footer class="py-8 text-center text-gray-500 text-sm">© 2025 — Optimizers Guide • For ML practitioners</footer>
+</body>
+</html>
